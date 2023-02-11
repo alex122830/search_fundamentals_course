@@ -1,5 +1,33 @@
 {
   "settings": {
     "index.refresh_interval": "5s"
+  },
+  "mappings": {
+    "properties": {
+
+      "new": {"type": "boolean", "null_value": false},
+      "digital":{"type": "boolean", "null_value": false},
+      "preowned":{"type": "boolean", "null_value": false},
+      "active":{"type": "boolean", "null_value": false},
+      "onSale":{"type": "boolean", "null_value": false},
+
+      "salesRankShortTerm": {"type": "float", "null_value": 0.0},
+      "salesRankMediumTerm": {"type": "float", "null_value": 0.0},
+      "salesRankLongTerm": {"type": "float", "null_value": 0.0},
+      "bestSellingRank": {"type": "float", "null_value": 0.0},
+
+      "regularPrice": {"type": "float", "null_value": 0.0},
+      "salePrice": {"type": "float", "null_value": 0.0},
+      "planPrice": {"type": "float", "null_value": 0.0},
+      "minimumDisplayPrice": {"type": "float", "null_value": 0.0},
+
+      "name": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}},
+      "longDescription": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}},
+      "shortDescription": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}},
+      "manufacturer": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}},
+      "albumTitle": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}},
+      "artistName": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}},
+      "albumLabel": {"type": "text", "analyzer": "english", "fields": {"keyword": {"type": "keyword", "null_value":"N/A"}}}
+    }
   }
 }
