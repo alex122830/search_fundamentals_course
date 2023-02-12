@@ -30,11 +30,11 @@ def process_filters(filters_input):
             print("from: {}, to: {}".format(from_val, to_val))
             # we need to turn the "to-from" syntax of aggregations to the "gte,lte" syntax of range filters.
             to_from = {}
-            if from_val:
+            if from_val and from_val != '*':
                 to_from["gte"] = from_val
             else:
                 from_val = "*"  # set it to * for display purposes, but don't use it in the query
-            if to_val:
+            if to_val and to_val != '*':
                 to_from["lt"] = to_val
             else:
                 to_val = "*"  # set it to * for display purposes, but don't use it in the query
@@ -86,6 +86,8 @@ def query():
         sortDir = request.args.get("sortDir", sortDir)
         if filters_input:
             (filters, display_filters, applied_filters) = process_filters(filters_input)
+        else:
+            filters = []
 
         query_obj = create_query(user_query, filters, sort, sortDir)
     else:
@@ -94,7 +96,7 @@ def query():
     print("query obj: {}".format(query_obj))
 
     #### Step 4.b.ii
-    response = None   # TODO: Replace me with an appropriate call to OpenSearch
+    response = opensearch.search(index = "bbuy_products", body = query_obj)
     # Postprocess results here if you so desire
 
     #print(response)
@@ -111,11 +113,86 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
     query_obj = {
         'size': 10,
         "query": {
-            "match_all": {} # Replace me with a query that both searches and filters
+            "function_score": {
+                "query": {
+                    "bool": {
+                        "must": {
+                            "query_string": {
+                                "query": user_query,
+                                "fields": ["name^1000", "shortDescription^50", "longDescription^10", "department"]
+                            }
+                        },
+                        "filter": filters
+                    }
+                },
+                "boost_mode": "multiply",
+                "score_mode": "avg",
+                "functions": [
+                {"field_value_factor": {
+                    "field": "salesRankShortTerm",
+                    "missing": 100000000,
+                    "modifier": "reciprocal"
+                }},
+                {"field_value_factor": {
+                    "field": "salesRankMediumTerm",
+                    "missing": 100000000,
+                    "modifier": "reciprocal"
+                }},
+                {"field_value_factor": {
+                    "field": "salesRankLongTerm",
+                    "missing": 100000000,
+                    "modifier": "reciprocal"
+                }}
+                ]
+            }
         },
         "aggs": {
+            "regularPrice": {
+                "range": {
+                    "field": "regularPrice",
+                    "ranges": [
+                        { "key": "$", "to": 5.0 },
+                        { "key": "$$", "from": 5.0, "to": 10.0 },
+                        { "key": "$$$", "from": 10.0, "to": 20.0 },
+                        { "key": "$$$$", "from": 20.0, "to": 50.0 },
+                        { "key": "$$$$$", "from": 50.0, "to": 100.0 },
+                        { "key": "$$$$$$", "from": 100.0 }
+                    ]
+                }
+            },
+            "department": {
+                "terms": { "field": "department.keyword" }
+            },
+            "missing_images": {
+                "missing": { "field": "image.keyword" }
+            }
             #### Step 4.b.i: create the appropriate query and aggregations here
-
-        }
+        },
+        "highlight": {
+            "number_of_fragments" : 3,
+            "fragment_size" : 150,
+            "fields" : {
+                "name" : { "pre_tags" : ["<font color='red'>"], "post_tags" : ["</font>"] },
+                "shortDescription" : { "pre_tags" : ["<font color='red'>"], "post_tags" : ["</font>"] },
+                "longDescription" : { "pre_tags" : ["<font color='red'>"], "post_tags" : ["</font>"] }
+            }
+        },
+        "sort": [
+            { sort : { "order" : sortDir } }
+        ],
+        "_source": [
+            "productId", 
+            "name", 
+            "shortDescription", 
+            "longDescription", 
+            "department", 
+            "salesRankShortTerm",
+            "salesRankMediumTerm",
+            "salesRankLongTerm",
+            "regularPrice",
+            "categoryPath",
+            "url",
+            "image"
+        ]
     }
     return query_obj
